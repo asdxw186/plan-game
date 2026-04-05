@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>翻牌配对</title>
+<meta name="description" content="翻牌配对记忆小游戏，挑战你的记忆力！">
+<meta property="og:title" content="翻牌配对 - 记忆力挑战">
+<meta property="og:description" content="翻开卡牌找出配对，3个关卡等你挑战！">
+<meta property="og:type" content="website">
+<meta name="format-detection" content="telephone=no">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #fff;
+  overflow-x: hidden;
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.header {
+  text-align: center;
+  padding: 20px 10px 10px;
+  width: 100%;
+  max-width: 500px;
+}
+
+.header h1 {
+  font-size: 28px;
+  background: linear-gradient(90deg, #f093fb, #f5576c, #ffd200);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 8px;
+}
+
+.stats {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  font-size: 15px;
+  color: #b8b8d0;
+}
+
+.stats span { font-weight: bold; color: #ffd200; }
+
+.level-info {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #8888aa;
+}
+
+.board {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  max-width: 500px;
+  width: 100%;
+  perspective: 1000px;
+}
+
+.board.cols-4 { grid-template-columns: repeat(4, 1fr); }
+.board.cols-5 { grid-template-columns: repeat(5, 1fr); }
+.board.cols-6 { grid-template-columns: repeat(6, 1fr); }
+
+.card {
+  aspect-ratio: 1;
+  cursor: pointer;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.5s ease;
+}
+
+.card.flipped { transform: rotateY(180deg); }
+
+.card.matched {
+  transform: rotateY(180deg);
+  animation: matchPop 0.4s ease;
+}
+
+.card-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backface-visibility: hidden;
+  font-size: clamp(24px, 6vw, 42px);
+}
+
+.card-front {
+  background: linear-gradient(145deg, #3a3a5c, #2a2a4a);
+  border: 2px solid #4a4a6a;
+  transform: rotateY(0deg);
+}
+
+.card-front::after {
+  content: '?';
+  font-size: clamp(20px, 5vw, 36px);
+  color: #6a6a8a;
+  font-weight: bold;
+}
+
+.card-back {
+  background: linear-gradient(145deg, #1a1a3a, #2a2a5a);
+  border: 2px solid #5a5aff;
+  transform: rotateY(180deg);
+  box-shadow: 0 0 15px rgba(90, 90, 255, 0.3);
+}
+
+.card.matched .card-back {
+  border-color: #00e676;
+  box-shadow: 0 0 20px rgba(0, 230, 118, 0.4);
+}
+
+@keyframes matchPop {
+  0% { transform: rotateY(180deg) scale(1); }
+  50% { transform: rotateY(180deg) scale(1.15); }
+  100% { transform: rotateY(180deg) scale(1); }
+}
+
+.card:not(.flipped):not(.matched):hover .card-front {
+  border-color: #7a7aff;
+  background: linear-gradient(145deg, #4a4a6c, #3a3a5a);
+}
+
+.card:not(.flipped):not(.matched):active {
+  transform: scale(0.95);
+}
+
+.win-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+.win-overlay.show { display: flex; }
+
+.win-box {
+  background: linear-gradient(145deg, #2a2a4a, #1a1a3a);
+  border-radius: 20px;
+  padding: 30px;
+  text-align: center;
+  border: 2px solid #5a5aff;
+  max-width: 320px;
+  width: 90%;
+}
+
+.win-emoji { font-size: 60px; margin-bottom: 10px; }
+
+.win-box h2 {
+  font-size: 24px;
+  margin-bottom: 12px;
+  color: #ffd200;
+}
+
+.win-box p {
+  color: #b8b8d0;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.win-box button, .menu button {
+  margin-top: 12px;
+  padding: 12px 32px;
+  border: none;
+  border-radius: 25px;
+  font-size: 16px;
+  cursor: pointer;
+  background: linear-gradient(90deg, #f093fb, #f5576c);
+  color: #fff;
+  font-weight: bold;
+  transition: transform 0.2s, box-shadow 0.2s;
+  display: block;
+  width: 100%;
+}
+
+.win-box button:hover, .menu button:hover {
+  transform: scale(1.03);
+  box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
+}
+
+.btn-secondary {
+  background: linear-gradient(90deg, #4a4a6a, #3a3a5a) !important;
+}
+
+.btn-secondary:hover {
+  box-shadow: 0 4px 15px rgba(90, 90, 255, 0.3) !important;
+}
+
+.menu {
+  padding: 20px;
+  display: flex;
+  gap: 10px;
+  max-width: 500px;
+  width: 100%;
+}
+
+.menu button {
+  flex: 1;
+  padding: 10px;
+  font-size: 14px;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>翻牌配对</h1>
+  <div class="stats">
+    <div>步数: <span id="moves">0</span></div>
+    <div>时间: <span id="timer">0</span>s</div>
+    <div>关卡: <span id="level">1</span></div>
+  </div>
+  <div class="level-info" id="levelInfo">第1关 · 4×4 · 找出8对</div>
+</div>
+
+<div class="board" id="board"></div>
+
+<div class="win-overlay" id="winOverlay">
+  <div class="win-box">
+    <div class="win-emoji">🎉</div>
+    <h2 id="winTitle">恭喜通关！</h2>
+    <p id="winStats"></p>
+    <p id="bestRecord"></p>
+    <button id="nextBtn" onclick="nextLevel()">下一关</button>
+    <button class="btn-secondary" onclick="restartGame()">重新开始</button>
+  </div>
+</div>
+
+<div class="menu" id="menu">
+  <button class="btn-secondary" onclick="restartGame()">重玩本关</button>
+  <button class="btn-secondary" onclick="resetAll()">从头开始</button>
+</div>
+
+<script>
+const LEVELS = [
+  { rows: 4, cols: 4, pairs: 8 },
+  { rows: 4, cols: 5, pairs: 10 },
+  { rows: 5, cols: 6, pairs: 15 },
+];
+
+const EMOJIS = [
+  '🐶','🐱','🐼','🦊','🐸','🐵','🐷','🐮',
+  '🦁','🐯','🐨','🐰','🐻','🐲','🦄','🐙',
+  '🐬','🦋','🐢','🦀','🐝','🐞','🦉','🐧',
+  '🐳','🦈','🐊','🦜','🐺','🦒',
+];
+
+let currentLevel = parseInt(localStorage.getItem('cardLevel') || '0');
+let cards = [];
+let flippedCards = [];
+let matchedPairs = 0;
+let moves = 0;
+let timerInterval = null;
+let seconds = 0;
+let locked = false;
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function initGame() {
+  const level = LEVELS[currentLevel] || LEVELS[LEVELS.length - 1];
+  const totalCards = level.rows * level.cols;
+  const pairCount = totalCards / 2;
+
+  const selected = shuffle([...EMOJIS]).slice(0, pairCount);
+  cards = shuffle([...selected, ...selected]);
+
+  matchedPairs = 0;
+  moves = 0;
+  seconds = 0;
+  flippedCards = [];
+  locked = false;
+
+  clearInterval(timerInterval);
+  timerInterval = null;
+
+  document.getElementById('moves').textContent = '0';
+  document.getElementById('timer').textContent = '0';
+  document.getElementById('level').textContent = currentLevel + 1;
+  document.getElementById('levelInfo').textContent =
+    `第${currentLevel + 1}关 · ${level.cols}×${level.rows} · 找出${pairCount}对`;
+
+  const board = document.getElementById('board');
+  board.className = 'board cols-' + level.cols;
+  board.innerHTML = '';
+
+  cards.forEach((emoji, i) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.index = i;
+    card.dataset.emoji = emoji;
+    card.innerHTML = `
+      <div class="card-face card-front"></div>
+      <div class="card-face card-back">${emoji}</div>
+    `;
+    card.addEventListener('click', () => flipCard(card));
+    board.appendChild(card);
+  });
+
+  document.getElementById('winOverlay').classList.remove('show');
+}
+
+function startTimer() {
+  if (timerInterval) return;
+  timerInterval = setInterval(() => {
+    seconds++;
+    document.getElementById('timer').textContent = seconds;
+  }, 1000);
+}
+
+function flipCard(card) {
+  if (locked) return;
+  if (card.classList.contains('flipped') || card.classList.contains('matched')) return;
+  if (flippedCards.length >= 2) return;
+
+  startTimer();
+
+  card.classList.add('flipped');
+  flippedCards.push(card);
+
+  if (flippedCards.length === 2) {
+    moves++;
+    document.getElementById('moves').textContent = moves;
+    checkMatch();
+  }
+}
+
+function checkMatch() {
+  const [a, b] = flippedCards;
+
+  if (a.dataset.emoji === b.dataset.emoji) {
+    a.classList.add('matched');
+    b.classList.add('matched');
+    flippedCards = [];
+    matchedPairs++;
+
+    const level = LEVELS[currentLevel] || LEVELS[LEVELS.length - 1];
+    if (matchedPairs === (level.rows * level.cols) / 2) {
+      clearInterval(timerInterval);
+      setTimeout(showWin, 500);
+    }
+  } else {
+    locked = true;
+    setTimeout(() => {
+      a.classList.remove('flipped');
+      b.classList.remove('flipped');
+      flippedCards = [];
+      locked = false;
+    }, 800);
+  }
+}
+
+function showWin() {
+  const key = `best_level_${currentLevel}`;
+  const prev = JSON.parse(localStorage.getItem(key) || 'null');
+  const isNewBest = !prev || moves < prev.moves || (moves === prev.moves && seconds < prev.time);
+
+  if (isNewBest) {
+    localStorage.setItem(key, JSON.stringify({ moves, time: seconds }));
+  }
+
+  document.getElementById('winTitle').textContent =
+    currentLevel >= LEVELS.length - 1 ? '全部通关！🏆' : '恭喜通关！';
+  document.getElementById('winStats').textContent =
+    `用了 ${moves} 步，耗时 ${seconds} 秒`;
+  document.getElementById('bestRecord').textContent =
+    isNewBest ? '🌟 新纪录！' : `最佳: ${prev.moves}步 / ${prev.time}秒`;
+  document.getElementById('nextBtn').style.display =
+    currentLevel >= LEVELS.length - 1 ? 'none' : 'block';
+
+  document.getElementById('winOverlay').classList.add('show');
+}
+
+function nextLevel() {
+  if (currentLevel < LEVELS.length - 1) {
+    currentLevel++;
+    localStorage.setItem('cardLevel', currentLevel);
+    initGame();
+  }
+}
+
+function restartGame() {
+  initGame();
+}
+
+function resetAll() {
+  currentLevel = 0;
+  localStorage.setItem('cardLevel', '0');
+  initGame();
+}
+
+initGame();
+
+// 微信内禁止下拉露底和双指缩放
+document.addEventListener('touchmove', function(e) {
+  if (e.touches.length > 1) e.preventDefault();
+}, { passive: false });
+
+let lastTouchEnd = 0;
+document.addEventListener('touchend', function(e) {
+  const now = Date.now();
+  if (now - lastTouchEnd <= 300) e.preventDefault();
+  lastTouchEnd = now;
+}, false);
+</script>
+</body>
+</html>
